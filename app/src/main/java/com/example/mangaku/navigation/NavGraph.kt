@@ -17,9 +17,9 @@ import com.example.mangaku.core.data.AppDatabase
 import com.example.mangaku.features.auth.SignInScreen
 import com.example.mangaku.features.auth.SignInViewModel
 import com.example.mangaku.features.auth.SignInViewModelFactory
-import com.example.mangaku.features.detection.ProfileScreen
-import com.example.mangaku.features.manga.HomeScreen
-import com.example.mangaku.features.manga.HomeViewModel
+import com.example.mangaku.features.detection.FaceRecognitionScreen
+import com.example.mangaku.features.manga.MangaScreen
+import com.example.mangaku.features.manga.MangaViewModel
 import com.example.mangaku.features.manga.MangaDetailScreen
 
 
@@ -44,18 +44,17 @@ fun NavGraph(
             SignInScreen(viewModel = viewModel, navController = navController)
         }
 
-        composable("home") {
+        composable("manga") {
 
 
-            HomeScreen(
+            MangaScreen(
                 onMangaClick = { manga ->
-                    print("Clicked on manga: ${manga.id}")
                     navController.navigate("mangaDetail/${manga.id}")
                 }
             )
         }
 
-        composable("profile") { ProfileScreen() }
+        composable("face_recognition_screen") { FaceRecognitionScreen() }
 
         composable(
             route = "mangaDetail/{mangaId}",
@@ -63,9 +62,9 @@ fun NavGraph(
         ) { backStackEntry ->
             val mangaId = backStackEntry.arguments?.getString("mangaId")
             val parentEntry = remember(backStackEntry) {
-                navController.getBackStackEntry("home")
+                navController.getBackStackEntry("manga")
             }
-            val viewModel: HomeViewModel = viewModel(parentEntry)
+            val viewModel: MangaViewModel = viewModel(parentEntry)
             val manga = viewModel.getMangaById(mangaId)
 
 

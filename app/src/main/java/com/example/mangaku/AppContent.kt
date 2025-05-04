@@ -10,7 +10,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,10 +26,9 @@ import com.example.mangaku.navigation.NavGraph
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun AppContent(viewModel: AppViewModel = hiltViewModel()) {
+fun AppContent() {
     val context = LocalContext.current
     val navController = rememberNavController()
-    val startDestination by viewModel.startDestination.collectAsState()
     val db = remember { AppDatabase.getDatabase(context) }
     val userDao = db.userDao()
 
@@ -38,14 +36,14 @@ fun AppContent(viewModel: AppViewModel = hiltViewModel()) {
 
     LaunchedEffect(Unit) {
         val signedInUser = userDao.getSignedInUser()
-        startDestination = if (signedInUser != null) "home" else "sign_in"
+        startDestination = if (signedInUser != null) "manga" else "sign_in"
     }
 
     if (startDestination != null) {
-        val items = listOf(BottomNavItem.Home, BottomNavItem.Profile)
+        val items = listOf(BottomNavItem.Manga, BottomNavItem.FaceRecognitionScreen)
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
-        val showBottomBar = currentRoute in listOf("home", "profile")
+        val showBottomBar = currentRoute in listOf("manga", "face_recognition_screen")
 
         Scaffold(
             bottomBar = {

@@ -14,7 +14,7 @@ import okhttp3.Response
 import com.google.gson.Gson
 import okhttp3.Call
 
-class HomeViewModel : ViewModel() {
+class MangaViewModel : ViewModel() {
 
 
     val mangaData = mutableStateListOf<MangaData>()

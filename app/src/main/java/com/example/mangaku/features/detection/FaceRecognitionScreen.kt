@@ -28,7 +28,7 @@ import com.example.mangaku.features.auth.detection.FaceDetectorComposeBuilder
 
 
 @Composable
-fun ProfileScreen() {
+fun FaceRecognitionScreen() {
     val context = LocalContext.current
     var hasPermission by remember {
         mutableStateOf(

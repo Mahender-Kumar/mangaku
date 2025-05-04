@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">Mangaku</string>
-    <string name="home">Home</string>
-    <string name="profile">Profile</string>
+    <string name="manga">Manga</string>
+    <string name="face_recognition_screen">Face Recognition</string>
 </resources>

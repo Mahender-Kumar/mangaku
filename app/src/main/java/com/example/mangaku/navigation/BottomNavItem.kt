@@ -9,6 +9,6 @@ sealed class BottomNavItem(
     @DrawableRes val icon: Int,
     @StringRes val title: Int
 ) {
-    data object Home : BottomNavItem("home", R.drawable.ic_home, R.string.home)
-    data object Profile : BottomNavItem("profile", R.drawable.ic_profile, R.string.profile)
+    data object Manga : BottomNavItem("manga", R.drawable.ic_home, R.string.manga)
+    data object FaceRecognitionScreen : BottomNavItem("face_recognition_screen", R.drawable.ic_profile, R.string.face_recognition_screen)
 }

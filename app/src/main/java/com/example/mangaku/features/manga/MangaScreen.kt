@@ -44,11 +44,11 @@ import com.example.mangaku.core.util.toTitleCase
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-fun HomeScreen(onMangaClick: (MangaData) -> Unit) {
-    val homeViewModel: HomeViewModel = viewModel()
+fun MangaScreen(onMangaClick: (MangaData) -> Unit) {
+    val mangaViewModel: MangaViewModel = viewModel()
 
     // Observe manga data directly
-    val mangaData = homeViewModel.mangaData
+    val mangaData = mangaViewModel.mangaData
 
     // If data is empty, show a loading indicator or text
     if (mangaData.isEmpty()) {
@@ -128,7 +128,7 @@ fun HomeScreen(onMangaClick: (MangaData) -> Unit) {
     // Call the function to fetch data if it's not already loaded
     LaunchedEffect(mangaData) {
         if (mangaData.isEmpty()) {
-            homeViewModel.fetchMangaData()
+            mangaViewModel.fetchMangaData()
         }
     }
 
