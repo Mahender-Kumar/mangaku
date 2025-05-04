@@ -86,6 +86,11 @@ dependencies {
     implementation ("de.undercouch:gradle-download-task:4.1.2")
 
     implementation(libs.androidx.hilt.navigation.fragment)
+    implementation ("com.google.dagger:hilt-android:2.48")
+    ksp ("com.google.dagger:hilt-compiler:2.48")
+
+    // Hilt for Jetpack Compose
+    implementation ("androidx.hilt:hilt-navigation-compose:1.1.0")
 
 
 
