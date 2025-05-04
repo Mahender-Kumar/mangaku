@@ -14,6 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.mangaku.core.data.AppDatabase
+import com.example.mangaku.features.auth.PasswordEncryptor
 import com.example.mangaku.features.auth.SignInScreen
 import com.example.mangaku.features.auth.SignInViewModel
 import com.example.mangaku.features.auth.SignInViewModelFactory
@@ -39,7 +40,8 @@ fun NavGraph(
             val context = LocalContext.current
             val db = remember { AppDatabase.Companion.getDatabase(context) }
             val userDao = db.userDao()
-            val viewModel: SignInViewModel = viewModel(factory = SignInViewModelFactory(userDao))
+            val passwordEncryptor = remember { PasswordEncryptor() }
+            val viewModel: SignInViewModel = viewModel(factory = SignInViewModelFactory(userDao,passwordEncryptor))
 
             SignInScreen(viewModel = viewModel, navController = navController)
         }
