@@ -133,7 +133,7 @@ fun AppContent() {
                                 icon = {
                                     Icon(painterResource(id = item.icon), contentDescription = null)
                                 },
-                                label = { Text(stringResource(item.title)) },
+//                                label = { Text(stringResource(item.title)) },
                                 selected = selected,
                                 onClick = {
                                     // Prevent redundant navigation

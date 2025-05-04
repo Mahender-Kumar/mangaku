@@ -19,6 +19,8 @@ import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
 import android.view.View
+import androidx.core.content.ContextCompat
+import com.example.mangaku.R
 import com.google.mediapipe.tasks.vision.facedetector.FaceDetectorResult
 import kotlin.math.min
 
@@ -48,7 +50,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     }
 
     private fun initPaints() {
-        textBackgroundPaint.color = Color.BLACK
+        textBackgroundPaint.color = Color.GREEN
         textBackgroundPaint.style = Paint.Style.FILL
         textBackgroundPaint.textSize = 50f
 
@@ -56,7 +58,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         textPaint.style = Paint.Style.FILL
         textPaint.textSize = 50f
 
-//        boxPaint.color = ContextCompat.getColor(context!!, R.color.mp_primary)
+        boxPaint.color = ContextCompat.getColor(context!!, R.color.green)
         boxPaint.strokeWidth = 8F
         boxPaint.style = Paint.Style.STROKE
     }
