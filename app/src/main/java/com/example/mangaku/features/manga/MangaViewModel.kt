@@ -1,85 +1,94 @@
 package com.example.mangaku.features.manga
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import java.io.IOException
+import android.app.Application
 import androidx.compose.runtime.mutableStateListOf
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.mangaku.core.data.AppDatabase
 import com.example.mangaku.core.model.MangaData
-import okhttp3.Callback
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import com.google.gson.Gson
-import okhttp3.Call
+import com.example.mangaku.core.repository.MangaRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class MangaViewModel : ViewModel() {
-
-
+class MangaViewModel(application: Application) : AndroidViewModel(application) {
+    // Data state
     val mangaData = mutableStateListOf<MangaData>()
 
+    // Loading state
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    fun setMangaList(list: List<MangaData>) {
-        mangaData.clear()
-        mangaData.addAll(list)
+    // Error state
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    // Repository instance
+    private val repository: MangaRepository
+
+    // Flag to track if data has been loaded at least once
+    private var dataLoaded = false
+
+    init {
+        val database = AppDatabase.getDatabase(application)
+        repository = MangaRepository(application.applicationContext, database.mangaDao())
     }
 
+    // Expose repository for use by other components
+    fun getRepository(): MangaRepository = repository
+
+    // Function to fetch manga data with caching
+    fun fetchMangaData() {
+        // Don't fetch if already loading or data is already loaded
+        if (_isLoading.value || dataLoaded && mangaData.isNotEmpty()) return
+
+        _isLoading.value = true
+        _error.value = null
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val data = repository.getMangaData()
+                withContext(Dispatchers.Main) {
+                    mangaData.clear()
+                    mangaData.addAll(data)
+                    dataLoaded = true
+                    _isLoading.value = false
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    _error.value = "Failed to load manga: ${e.message}"
+                    _isLoading.value = false
+                }
+            }
+        }
+    }
+
+    // Get a specific manga by ID (synchronous, from memory)
     fun getMangaById(id: String?): MangaData? {
+        if (id == null) return null
         return mangaData.find { it.id == id }
     }
 
-    // Function to fetch manga data
-    fun fetchMangaData() {
-        // Launching a coroutine inside viewModelScope
-        viewModelScope.launch(Dispatchers.IO) {
-            // Make the network request using OkHttp
-            val client = OkHttpClient()
+    // Get manga by ID asynchronously (checks cache if not in memory)
+    suspend fun getMangaByIdAsync(id: String?): MangaData? {
+        if (id == null) return null
 
-            val request = Request.Builder()
-                .url("https://mangaverse-api.p.rapidapi.com/manga/fetch?page=1&genres=Harem,Fantasy&nsfw=true&type=all")
-                .get()
-                .addHeader("x-rapidapi-key", "8e440e7281msh5fdc3cbd2a4b4f1p1c50cajsna99ffe4ea548")
-                .addHeader("x-rapidapi-host", "mangaverse-api.p.rapidapi.com")
-                .build()
+        // First check if it's in memory
+        val inMemoryManga = mangaData.find { it.id == id }
+        if (inMemoryManga != null) return inMemoryManga
 
-            client.newCall(request).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    println("❌rapidapiFailed Failed: ${e.message}")
-                }
-
-                override fun onResponse(call: Call, response: Response) {
-                    response.use {
-                        if (!response.isSuccessful) {
-                            println(" rapidapiFailed Uexpected code $response")
-                        } else {
-                            println("✅ rapidapiFailed    $response")
-                            val json = response.body?.string()
-
-                            val mangaList = parseMangaData(json)
-
-                            viewModelScope.launch(Dispatchers.Main) {
-                                mangaData.clear()
-                                mangaData.addAll(mangaList)
-                            }
-                        }
-                    }
-                }
-            })
+        // If not in memory, get from cache
+        return withContext(Dispatchers.IO) {
+            repository.getMangaById(id)
         }
     }
 
-    private fun parseMangaData(json: String?): List<MangaData> {
-
-
-        if (json.isNullOrEmpty()) return emptyList()
-        return try {
-            Gson().fromJson(json, MangaResponse::class.java).data ?: emptyList()
-        } catch (e: Exception) {
-            println("❌ JSON Parsing Error: ${e.message}")
-            emptyList()
-        }
+    // Force refresh - ignores cache and fetches new data
+    fun refreshMangaData() {
+        dataLoaded = false
+        fetchMangaData()
     }
-
 }
-

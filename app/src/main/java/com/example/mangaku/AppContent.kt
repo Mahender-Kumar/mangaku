@@ -131,7 +131,7 @@ fun AppContent() {
 
                             NavigationBarItem(
                                 icon = {
-                                    Icon(painterResource(id = item.icon), contentDescription = null)
+                                    Icon( item.icon, contentDescription = null)
                                 },
 //                                label = { Text(stringResource(item.title)) },
                                 selected = selected,

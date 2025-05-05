@@ -38,17 +38,17 @@ fun NavGraph(
     ) {
         composable("sign_in") {
             val context = LocalContext.current
-            val db = remember { AppDatabase.Companion.getDatabase(context) }
+            val db = remember { AppDatabase.getDatabase(context) }
             val userDao = db.userDao()
             val passwordEncryptor = remember { PasswordEncryptor() }
-            val viewModel: SignInViewModel = viewModel(factory = SignInViewModelFactory(userDao,passwordEncryptor))
+            val viewModel: SignInViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                factory = SignInViewModelFactory(userDao, passwordEncryptor)
+            )
 
             SignInScreen(viewModel = viewModel, navController = navController)
         }
 
         composable("manga") {
-
-
             MangaScreen(
                 onMangaClick = { manga ->
                     navController.navigate("mangaDetail/${manga.id}")
@@ -56,23 +56,17 @@ fun NavGraph(
             )
         }
 
-        composable("face_recognition_screen") { FaceRecognitionScreen() }
+        composable("face_recognition_screen") {
+            FaceRecognitionScreen()
+        }
 
         composable(
             route = "mangaDetail/{mangaId}",
             arguments = listOf(navArgument("mangaId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val mangaId = backStackEntry.arguments?.getString("mangaId")
-            val parentEntry = remember(backStackEntry) {
-                navController.getBackStackEntry("manga")
-            }
-            val viewModel: MangaViewModel = viewModel(parentEntry)
-            val manga = viewModel.getMangaById(mangaId)
-
-
-            manga?.let {
-                MangaDetailScreen(it)
-            } ?: Text("Manga not found")
+            val mangaId = backStackEntry.arguments?.getString("mangaId") ?: ""
+            // Use the updated MangaDetailScreen that loads data from cache if needed
+            MangaDetailScreen(mangaId = mangaId)
         }
 
 
