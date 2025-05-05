@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -64,62 +65,12 @@ fun MangaScreen(onMangaClick: (MangaData) -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(mangaData) { manga ->
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(260.dp) // Fixed height for all cards
-                        .padding(4.dp)
-                        .clickable { onMangaClick(manga) }
-                ) {
-                    Column(modifier = Modifier.padding(0.dp)) {
-                        GlideImage(
-                            model = manga.thumb,
-                            contentDescription = manga.summary,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp), // Set a fixed height
-                            contentScale = ContentScale.Crop // Ensures the image fills the space nicely
-                        )
-                        Text(
-                            text = manga.title.trim(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                                .fillMaxWidth()
-                        )
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.padding(8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                                horizontalArrangement = Arrangement.Start,
-                                verticalAlignment = Alignment.CenterVertically
-
-                            ) {
-
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .background(color = Color.Green, shape = CircleShape)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = manga.status.toString().toTitleCase(),
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-
-                            }
-
-                        }
+                MangaCard(
+                    manga = manga,
+                    onMangaClick = onMangaClick
+                )
 
 
-                    }
-                }
             }
         }
 
@@ -132,4 +83,68 @@ fun MangaScreen(onMangaClick: (MangaData) -> Unit) {
         }
     }
 
+}
+
+
+@OptIn(ExperimentalGlideComposeApi::class)
+@Composable
+fun MangaCard(manga: MangaData, onMangaClick: (MangaData) -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(260.dp) // Fixed height for all cards
+
+            .clickable { onMangaClick(manga) },
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(0.dp)) {
+            GlideImage(
+                model = manga.thumb,
+                contentDescription = manga.summary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp), // Set a fixed height
+                contentScale = ContentScale.Crop // Ensures the image fills the space nicely
+            )
+            Text(
+                text = manga.title.trim(),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .fillMaxWidth()
+            )
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+
+                ) {
+
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(color = Color.Green, shape = CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = manga.status.toTitleCase(),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+
+                }
+
+            }
+
+
+        }
+    }
 }
