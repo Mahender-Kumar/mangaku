@@ -56,7 +56,7 @@ fun FaceRecognitionScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(text = "Hello MediaPipe", style = MaterialTheme.typography.titleLarge)
+//            Text(text = "Hello MediaPipe", style = MaterialTheme.typography.titleLarge)
 
             FaceDetectorComposeBuilder(
                 context = context,
