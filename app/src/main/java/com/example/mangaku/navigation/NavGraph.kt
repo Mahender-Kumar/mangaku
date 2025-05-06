@@ -21,6 +21,7 @@ import com.example.mangaku.features.auth.SignInViewModelFactory
 import com.example.mangaku.features.detection.FaceRecognitionScreen
 import com.example.mangaku.features.manga.MangaScreen
 import com.example.mangaku.features.manga.MangaViewModel
+import com.example.mangaku.features.manga.MangaViewModelFactory
 import com.example.mangaku.features.manga.MangaDetailScreen
 
 
@@ -31,25 +32,35 @@ fun NavGraph(
     modifier: Modifier = Modifier,
     startDestination: String
 ) {
+    // Create the application context once
+    val context = LocalContext.current
+    val application = remember { context.applicationContext as android.app.Application }
+
+    // Create MangaViewModel with the application scope
+    // This ensures it persists across navigation events
+    val mangaViewModelFactory = remember { MangaViewModelFactory(application) }
+    val mangaViewModel: MangaViewModel = viewModel(factory = mangaViewModelFactory)
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
         modifier = modifier
     ) {
         composable("sign_in") {
-            val context = LocalContext.current
             val db = remember { AppDatabase.getDatabase(context) }
             val userDao = db.userDao()
             val passwordEncryptor = remember { PasswordEncryptor() }
-            val viewModel: SignInViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+            val signInViewModel: SignInViewModel = viewModel(
                 factory = SignInViewModelFactory(userDao, passwordEncryptor)
             )
 
-            SignInScreen(viewModel = viewModel, navController = navController)
+            SignInScreen(viewModel = signInViewModel, navController = navController)
         }
 
         composable("manga") {
+            // Pass the shared mangaViewModel instead of creating a new one
             MangaScreen(
+                viewModel = mangaViewModel,
                 onMangaClick = { manga ->
                     navController.navigate("mangaDetail/${manga.id}")
                 }
@@ -65,10 +76,11 @@ fun NavGraph(
             arguments = listOf(navArgument("mangaId") { type = NavType.StringType })
         ) { backStackEntry ->
             val mangaId = backStackEntry.arguments?.getString("mangaId") ?: ""
-            // Use the updated MangaDetailScreen that loads data from cache if needed
-            MangaDetailScreen(mangaId = mangaId)
+            // Pass the shared mangaViewModel to the detail screen
+            MangaDetailScreen(
+                mangaId = mangaId,
+                mangaViewModel = mangaViewModel
+            )
         }
-
-
     }
 }

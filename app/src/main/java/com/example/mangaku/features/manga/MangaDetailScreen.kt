@@ -1,6 +1,9 @@
 package com.example.mangaku.features.manga
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,204 +16,255 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import com.example.mangaku.core.model.MangaData
+import com.example.mangaku.core.util.toTitleCase
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalGlideComposeApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalGlideComposeApi::class)
 @Composable
-fun MangaDetailScreen(mangaId: String) {
+fun MangaDetailScreen(
+    mangaId: String,
+    mangaViewModel: MangaViewModel
+) {
     val context = LocalContext.current
-    val viewModelFactory = remember { MangaViewModelFactory(context.applicationContext as android.app.Application) }
-    val mangaViewModel: MangaViewModel = viewModel(factory = viewModelFactory)
-
     var manga by remember { mutableStateOf<MangaData?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
-    // Load manga data
+    // Get manga details when the screen is displayed
     LaunchedEffect(mangaId) {
         isLoading = true
-        // Try to load from cache/database
-        manga = mangaViewModel.getMangaByIdAsync(mangaId)
+        // First try to get from memory
+        var mangaData = mangaViewModel.getMangaById(mangaId)
+
+        // If not found in memory, try to get from cache
+        if (mangaData == null) {
+            mangaData = mangaViewModel.getMangaByIdAsync(mangaId)
+        }
+
+        manga = mangaData
         isLoading = false
     }
 
-    if (isLoading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else if (manga == null) {
-        // Manga not found
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Manga not found")
-                Spacer(modifier = Modifier.height(16.dp))
-                // Add a fetch data button to reload
-                androidx.compose.material3.Button(
-                    onClick = {
-                        mangaViewModel.fetchMangaData()
-                    }
-                ) {
-                    Text("Reload Data")
-                }
-            }
-        }
-    } else {
-        // Display manga details
-        Column(
+    Scaffold(
+//        topBar = {
+//            TopAppBar(
+//                title = { Text(text = manga?.title?.trim() ?: "Loading...") },
+//                navigationIcon = {
+//                    IconButton(onClick = {
+//                        // Navigate back
+//                        androidx.navigation.compose.rememberNavController().navigateUp()
+//                    }) {
+//                        Icon(
+//                            imageVector = Icons.Default.ArrowBack,
+//                            contentDescription = "Back"
+//                        )
+//                    }
+//                }
+//            )
+//        }
+    ) { paddingValues ->
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .padding(paddingValues)
         ) {
-            GlideImage(
-                model = manga!!.thumb,
-                contentDescription = manga!!.summary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp),
-                contentScale = ContentScale.Crop
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = manga!!.title.trim(),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-
-            if (manga!!.sub_title.isNotBlank()) {
-                Text(
-                    text = manga!!.sub_title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.Gray
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            if (isLoading) {
+                // Show loading indicator
                 Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (manga == null) {
+                // Show error message if manga is not found
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Manga not found",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color.Red
+                    )
+                }
+            } else {
+                // Show manga details
+                Column(
                     modifier = Modifier
-                        .size(8.dp)
-                        .background(
-                            color = if (manga!!.status.lowercase() == "ongoing") Color.Green else Color.Red,
-                            shape = CircleShape
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                ) {
+                    // Manga image
+                    GlideImage(
+                        model = manga?.thumb,
+                        contentDescription = manga?.title,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(250.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Title
+                    Text(
+                        text = manga?.title?.trim() ?: "",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    // Subtitle if available
+                    if (!manga?.sub_title.isNullOrBlank()) {
+                        Text(
+                            text = manga?.sub_title?.trim() ?: "",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = manga!!.status.replaceFirstChar { it.uppercase() },
-                    style = MaterialTheme.typography.labelMedium
-                )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Status indicator
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    ) {
+                        val statusColor = when (manga?.status?.lowercase()) {
+                            "ongoing" -> Color.Green
+                            "completed" -> Color.Blue
+                            "hiatus" -> Color.Yellow
+                            "discontinued" -> Color.Red
+                            else -> Color.Gray
+                        }
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .background(color = statusColor, shape = CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = manga?.status?.toTitleCase() ?: "",
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Genres
+                    Text(
+                        text = "Genres",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = manga?.genres?.joinToString(", ") ?: "N/A",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Authors
+                    Text(
+                        text = "Authors",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = manga?.authors?.joinToString(", ") ?: "Unknown",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Summary
+                    Text(
+                        text = "Summary",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = manga?.summary?.trim() ?: "No summary available",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Justify
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Additional info
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        InfoItem(title = "Type", value = manga?.type?.toTitleCase() ?: "N/A")
+                        InfoItem(title = "Chapters", value = manga?.total_chapter?.toString() ?: "N/A")
+                        InfoItem(title = "NSFW", value = if (manga?.nsfw == true) "Yes" else "No")
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Placeholder button - could be used for reading chapters, etc.
+                    Button(
+                        onClick = { /* Handle read action */ },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Start Reading")
+                    }
+                }
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "Genres: ${manga!!.genres.joinToString(", ")}",
-                style = MaterialTheme.typography.bodyMedium,
-                fontStyle = FontStyle.Italic
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = manga!!.summary.trim(),
-                style = MaterialTheme.typography.bodyLarge
-            )
         }
     }
 }
 
-// Overload for direct use with MangaData object
-@OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-fun MangaDetailScreen(manga: MangaData) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-    ) {
-        GlideImage(
-            model = manga.thumb,
-            contentDescription = manga.summary,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(180.dp),
-            contentScale = ContentScale.Crop
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
+fun InfoItem(title: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            text = manga.title.trim(),
-            style = MaterialTheme.typography.headlineSmall,
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold
         )
-
-        if (manga.sub_title.isNotBlank()) {
-            Text(
-                text = manga.sub_title,
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.Gray
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(
-                        color = if (manga.status.lowercase() == "ongoing") Color.Green else Color.Red,
-                        shape = CircleShape
-                    )
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = manga.status.replaceFirstChar { it.uppercase() },
-                style = MaterialTheme.typography.labelMedium
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
         Text(
-            text = "Genres: ${manga.genres.joinToString(", ")}",
-            style = MaterialTheme.typography.bodyMedium,
-            fontStyle = FontStyle.Italic
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = manga.summary.trim(),
-            style = MaterialTheme.typography.bodyLarge
+            text = value,
+            style = MaterialTheme.typography.bodyMedium
         )
     }
 }

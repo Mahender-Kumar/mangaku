@@ -20,7 +20,8 @@ class MangaRepository(
     private val mangaDao: MangaDao
 ) {
     private val okHttpClient = OkHttpClient()
-
+    // Track the last fetched page
+    private var currentPage = 0
     // Check if the device has internet connection
     private fun isNetworkAvailable(): Boolean {
         val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -31,16 +32,20 @@ class MangaRepository(
     }
 
     // Fetch manga data with caching strategy
-    suspend fun getMangaData(): List<MangaData> {
+    suspend fun getMangaData(forceRefresh: Boolean = false): List<MangaData> {
         return withContext(Dispatchers.IO) {
+
+            currentPage = 1
             // First try to get data from the API if network is available
             if (isNetworkAvailable()) {
                 try {
-                    val apiData = fetchMangaFromApi()
+                    val apiData = fetchMangaFromApi(currentPage)
                     if (apiData.isNotEmpty()) {
                         // Cache the data to local database
                         val entities = apiData.map { it.toMangaEntity() }
-                        mangaDao.clearAllManga() // Clear old data
+                        if (forceRefresh) {
+                            mangaDao.clearAllManga() // Clear old data if force refreshing
+                        }
                         mangaDao.insertAllManga(entities)
                         return@withContext apiData
                     }
@@ -63,11 +68,39 @@ class MangaRepository(
         }
     }
 
+    fun resetPagination() {
+        currentPage = 1
+    }
+
+    suspend fun loadMoreManga(): List<MangaData> {
+        return withContext(Dispatchers.IO) {
+            if (!isNetworkAvailable()) {
+                return@withContext emptyList<MangaData>()
+            }
+
+            try {
+                // Increment the page number
+                currentPage++
+
+                val apiData = fetchMangaFromApi(currentPage)
+                if (apiData.isNotEmpty()) {
+                    // Cache the additional data
+                    val entities = apiData.map { it.toMangaEntity() }
+                    mangaDao.insertAllManga(entities)
+                    return@withContext apiData
+                }
+            } catch (e: Exception) {
+                println("❌ Pagination API fetch failed: ${e.message}")
+            }
+
+            emptyList<MangaData>()
+        }
+    }
     // Fetch fresh data from API
-    private suspend fun fetchMangaFromApi(): List<MangaData> {
+    private suspend fun fetchMangaFromApi(page: Int): List<MangaData> {
         return withContext(Dispatchers.IO) {
             val request = Request.Builder()
-                .url("https://mangaverse-api.p.rapidapi.com/manga/fetch?page=1&genres=Harem,Fantasy&nsfw=true&type=all")
+                .url("https://mangaverse-api.p.rapidapi.com/manga/fetch?page=$page&genres=Harem,Fantasy&nsfw=true&type=all")
                 .get()
                 .addHeader("x-rapidapi-key", "8e440e7281msh5fdc3cbd2a4b4f1p1c50cajsna99ffe4ea548")
                 .addHeader("x-rapidapi-host", "mangaverse-api.p.rapidapi.com")

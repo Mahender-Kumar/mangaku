@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,16 +36,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import com.example.mangaku.core.model.MangaData
@@ -51,16 +52,58 @@ import com.example.mangaku.core.util.toTitleCase
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MangaScreen(onMangaClick: (MangaData) -> Unit) {
-    val context = LocalContext.current
-    val viewModelFactory =
-        remember { MangaViewModelFactory(context.applicationContext as android.app.Application) }
-    val mangaViewModel: MangaViewModel = viewModel(factory = viewModelFactory)
-
+fun MangaScreen(
+    viewModel: MangaViewModel,
+    onMangaClick: (MangaData) -> Unit
+) {
     // Observe states
-    val isLoading by mangaViewModel.isLoading.collectAsState()
-    val error by mangaViewModel.error.collectAsState()
-    val mangaData = mangaViewModel.mangaData
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isPaginationLoading by viewModel.isPaginationLoading.collectAsState()
+    val isEndReached by viewModel.isEndReached.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val mangaData = viewModel.mangaData
+
+    // Grid state to detect scroll position
+    val gridState = rememberLazyGridState()
+
+    // Detect when we're near the bottom for pagination
+    val shouldLoadMore = remember {
+        derivedStateOf {
+            val layoutInfo = gridState.layoutInfo
+            val visibleItemsInfo = layoutInfo.visibleItemsInfo
+            if (visibleItemsInfo.isEmpty()) {
+                false
+            } else {
+                val lastVisibleItem = visibleItemsInfo.last()
+                val lastIndex = lastVisibleItem.index
+                // Load more when we're 5 items away from the end
+                lastIndex >= layoutInfo.totalItemsCount - 5
+            }
+        }
+    }
+
+    // Add this - detect when scrolled to the very bottom
+    val isScrolledToBottom = remember {
+        derivedStateOf {
+            if (mangaData.isEmpty()) {
+                false
+            } else {
+                val layoutInfo = gridState.layoutInfo
+                val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                val totalItemsCount = layoutInfo.totalItemsCount
+
+                // Consider "at bottom" when the last item is visible
+                lastVisibleItemIndex >= totalItemsCount - 1
+            }
+        }
+    }
+
+    // Trigger pagination loading when near the bottom
+    LaunchedEffect(shouldLoadMore.value) {
+        if (shouldLoadMore.value && !isEndReached && !isPaginationLoading && !isLoading && mangaData.isNotEmpty()) {
+            viewModel.loadMoreManga()
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         when {
@@ -81,7 +124,7 @@ fun MangaScreen(onMangaClick: (MangaData) -> Unit) {
                     Text("Error: ${error}", color = Color.Red)
                     Spacer(modifier = Modifier.height(16.dp))
                     FloatingActionButton(
-                        onClick = { mangaViewModel.refreshMangaData() }
+                        onClick = { viewModel.refreshMangaData() }
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
@@ -90,24 +133,62 @@ fun MangaScreen(onMangaClick: (MangaData) -> Unit) {
 
             // Show data
             else -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2), // 2 columns
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(mangaData) { manga ->
-                        MangaCard(
-                            manga = manga,
-                            onMangaClick = onMangaClick
-                        )
+                Column(modifier = Modifier.fillMaxSize()) {
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Fixed(2), // 2 columns
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(mangaData) { manga ->
+                            MangaCard(
+                                manga = manga,
+                                onMangaClick = onMangaClick
+                            )
+                        }
+
+                        // Add this to show end message at the bottom when needed
+                        if (isEndReached && !isPaginationLoading) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                if (isScrolledToBottom.value) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "No more manga to load",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Show pagination loading indicator at the bottom
+                    if (isPaginationLoading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                                strokeWidth = 2.dp
+                            )
+                        }
                     }
                 }
 
                 // Add refresh button
 //                FloatingActionButton(
-//                    onClick = { mangaViewModel.refreshMangaData() },
+//                    onClick = { viewModel.refreshMangaData() },
 //                    modifier = Modifier
 //                        .align(Alignment.BottomEnd)
 //                        .padding(16.dp)
@@ -120,10 +201,9 @@ fun MangaScreen(onMangaClick: (MangaData) -> Unit) {
 
     // Call the function to fetch data if it's not already loaded
     LaunchedEffect(Unit) {
-        mangaViewModel.fetchMangaData()
+        viewModel.fetchMangaData()
     }
 }
-
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable

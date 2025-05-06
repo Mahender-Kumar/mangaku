@@ -20,4 +20,7 @@ interface MangaDao {
 
     @Query("DELETE FROM manga_table")
     suspend fun clearAllManga()
+
+    @Query("SELECT COUNT(*) FROM manga_table")
+    suspend fun getMangaCount(): Int
 }

@@ -22,6 +22,14 @@ class MangaViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    // Pagination loading state
+    private val _isPaginationLoading = MutableStateFlow(false)
+    val isPaginationLoading: StateFlow<Boolean> = _isPaginationLoading.asStateFlow()
+
+    // End of data reached state
+    private val _isEndReached = MutableStateFlow(false)
+    val isEndReached: StateFlow<Boolean> = _isEndReached.asStateFlow()
+
     // Error state
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -40,27 +48,65 @@ class MangaViewModel(application: Application) : AndroidViewModel(application) {
     // Expose repository for use by other components
     fun getRepository(): MangaRepository = repository
 
-    // Function to fetch manga data with caching
-    fun fetchMangaData() {
-        // Don't fetch if already loading or data is already loaded
-        if (_isLoading.value || dataLoaded && mangaData.isNotEmpty()) return
+    // Function to fetch initial manga data with caching
+    fun fetchMangaData(forceRefresh: Boolean = false) {
+        // Don't fetch if already loading
+        if (_isLoading.value) return
+        // Don't fetch if data is already loaded and not forcing refresh
+        if (dataLoaded && mangaData.isNotEmpty() && !forceRefresh) return
 
         _isLoading.value = true
         _error.value = null
+        // Reset end reached state when fetching initial data
+        _isEndReached.value = false
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val data = repository.getMangaData()
+                val data = repository.getMangaData(forceRefresh)
                 withContext(Dispatchers.Main) {
                     mangaData.clear()
                     mangaData.addAll(data)
                     dataLoaded = true
                     _isLoading.value = false
+
+                    // If initial fetch returns no data, consider it the end
+                    if (data.isEmpty()) {
+                        _isEndReached.value = true
+                    }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     _error.value = "Failed to load manga: ${e.message}"
                     _isLoading.value = false
+                }
+            }
+        }
+    }
+
+    // Function to load more data for pagination
+    fun loadMoreManga() {
+        // Don't load more if already loading pagination, initial loading, or end is reached
+        if (_isPaginationLoading.value || _isLoading.value || _isEndReached.value) return
+
+        _isPaginationLoading.value = true
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val newData = repository.loadMoreManga()
+                withContext(Dispatchers.Main) {
+                    // Add new data to the existing list
+                    if (newData.isNotEmpty()) {
+                        mangaData.addAll(newData)
+                    } else {
+                        // If no new data is returned, we've reached the end
+                        _isEndReached.value = true
+                    }
+                    _isPaginationLoading.value = false
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    _error.value = "Failed to load more manga: ${e.message}"
+                    _isPaginationLoading.value = false
                 }
             }
         }
@@ -89,6 +135,7 @@ class MangaViewModel(application: Application) : AndroidViewModel(application) {
     // Force refresh - ignores cache and fetches new data
     fun refreshMangaData() {
         dataLoaded = false
-        fetchMangaData()
+        repository.resetPagination()
+        fetchMangaData(forceRefresh = true)
     }
 }
