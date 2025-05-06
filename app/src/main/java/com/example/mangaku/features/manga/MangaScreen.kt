@@ -53,7 +53,8 @@ import com.example.mangaku.core.util.toTitleCase
 @Composable
 fun MangaScreen(onMangaClick: (MangaData) -> Unit) {
     val context = LocalContext.current
-    val viewModelFactory = remember { MangaViewModelFactory(context.applicationContext as android.app.Application) }
+    val viewModelFactory =
+        remember { MangaViewModelFactory(context.applicationContext as android.app.Application) }
     val mangaViewModel: MangaViewModel = viewModel(factory = viewModelFactory)
 
     // Observe states
@@ -158,6 +159,13 @@ fun MangaCard(manga: MangaData, onMangaClick: (MangaData) -> Unit) {
                 modifier = Modifier
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
+                val statusColor = when (manga.status.lowercase()) {
+                    "ongoing" -> Color.Green
+                    "completed" -> Color.Blue
+                    "hiatus" -> Color.Yellow
+                    "discontinued" -> Color.Red
+                    else -> Color.Gray
+                }
                 Row(
                     modifier = Modifier
                         .padding(horizontal = 8.dp, vertical = 4.dp),
@@ -167,7 +175,7 @@ fun MangaCard(manga: MangaData, onMangaClick: (MangaData) -> Unit) {
                     Box(
                         modifier = Modifier
                             .size(8.dp)
-                            .background(color = Color.Green, shape = CircleShape)
+                            .background(color = statusColor, shape = CircleShape)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
