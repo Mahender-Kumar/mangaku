@@ -102,7 +102,7 @@ class MangaRepository(
             val request = Request.Builder()
                 .url("https://mangaverse-api.p.rapidapi.com/manga/fetch?page=$page&genres=Harem,Fantasy&nsfw=true&type=all")
                 .get()
-                .addHeader("x-rapidapi-key", "8e440e7281msh5fdc3cbd2a4b4f1p1c50cajsna99ffe4ea548")
+                .addHeader("x-rapidapi-key", "key")
                 .addHeader("x-rapidapi-host", "mangaverse-api.p.rapidapi.com")
                 .build()
 
